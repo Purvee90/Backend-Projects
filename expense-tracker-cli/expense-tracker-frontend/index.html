@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expense Tracker</title>
+  https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css
+</head>
+<body class="bg-light">
+  <div class="container mt-5">
+    <h2 class="mb-4">Expense Tracker</h2>
+
+    <!-- Add Expense Form -->
+    <form id="expenseForm" class="mb-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <input type="text" class="form-control" placeholder="Description" id="description" required />
+        </div>
+        <div class="col-md-2">
+          placeholder="Amount" id="amount" required />
+        </div>
+        <div class="col-md-3">
+          <input type="text" class="form-control" placeholder="Category" id="category" required />
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-primary w-100">Add Expense</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Budget Form -->
+    <form id="budgetForm" class="mb-4">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <input type="text" class="form-control" placeholder="Month (e.g., Jul25)" id="budgetMonth" required />
+        </div>
+        <div class="col-md-3">
+          <input type="number" class="form-control" placeholder="Budget Amount" id="budgetAmount" required />
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-success w-100">Set Budget</button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Summary Section -->
+    <div class="mb-4">
+      <input type="text" class="form-control mb-2" placeholder="Month for Summary (e.g., Jul25)" id="summaryMonth" />
+      <button class="btn btn-info" onclick="getSummary()">Get Summary</button>
+      <div id="summaryResult" class="mt-3"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:5000";
+
+    document.getElementById("expenseForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const description = document.getElementById("description").value;
+      const amount = document.getElementById("amount").value;
+      const category = document.getElementById("category").value;
+
+      const res = await fetch(`${API_BASE}/add-expense`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description, amount, category }),
+      });
+      const data = await res.json();
+      alert(data.message || "Expense added!");
+    });
+
+    document.getElementById("budgetForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const month = document.getElementById("budgetMonth").value;
+      const amount = document.getElementById("budgetAmount").value;
+
+      const res = await fetch(`${API_BASE}/set-budget`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ month, amount }),
+      });
+      const data = await res.json();
+      alert(data.message || "Budget set!");
+    });
+
+    async function getSummary() {
+      const month = document.getElementById("summaryMonth").value;
+      const res = await fetch(`${API_BASE}/summary/${month}`);
+      const data = await res.json();
+
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+
+      document.getElementById("summaryResult").innerHTML = `
+        <p><strong>Month:</strong> ${data.month}</p>
+        <p><strong>Total Expense:</strong> ₹${data.total_expense}</p>
+        <p><strong>Budget:</strong> ₹${data.budget}</p>
+        <p><strong>Remaining:</strong> ₹${data.remaining}</p>
+        <img src="${data.budget_chart}" alt="Budget Chart" class="img-fluid mb-2"/>
+        <img src="${data.category_chart}" alt="Category Chart" class="img-fluid"/>
+      `;
+    }
+  </script>
+</body>
+</html>
