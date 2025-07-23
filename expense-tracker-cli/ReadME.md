@@ -2,6 +2,8 @@
 
 A simple command-line interface (CLI) application to manage your personal finances. Built as part of the roadmap.sh backend development journey, this project helps reinforce core backend concepts like CLI design, file handling, and data persistence.
 
+Project URL : https://roadmap.sh/projects/expense-tracker
+
 ## 📌 Project Overview
 
 This CLI tool allows users to:
