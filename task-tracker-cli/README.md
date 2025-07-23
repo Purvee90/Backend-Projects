@@ -19,7 +19,7 @@ The Task Planner CLI is a simple yet powerful tool that allows users to manage t
 ## 🛠 Installation
 
 ```bash
-git clone https://github.com/Purvee90/weather_backend_roadmaps.git
+git clone https://github.com/Purvee90/Backend-Projects/task-tracker-cli.git
 cd weather_backend_roadmaps
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\\Scripts\\activate
