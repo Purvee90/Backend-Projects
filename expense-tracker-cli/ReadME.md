@@ -4,6 +4,8 @@ A simple command-line interface (CLI) application to manage your personal financ
 
 Project URL : https://roadmap.sh/projects/expense-tracker
 
+GitHub URL : https://github.com/Purvee90/Backend-Projects/tree/main/expense-tracker-cli
+
 ## 📌 Project Overview
 
 This CLI tool allows users to:
