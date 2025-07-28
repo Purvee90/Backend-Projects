@@ -90,7 +90,7 @@ class Budget(db.Model):
     month = db.Column(db.String(10), nullable=False)
     budget_amount = db.Column(db.Float, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    category = db.Column(db.String(50), nullable=True)
+    # category = db.Column(db.String(50), nullable=True)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
 
