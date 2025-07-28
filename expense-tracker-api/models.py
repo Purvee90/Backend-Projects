@@ -1,4 +1,5 @@
 import sqlalchemy
+from sqlalchemy import Enum
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -41,7 +42,22 @@ class Expense(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     amount = db.Column(db.Float, nullable=False)
     description = db.Column(db.String, nullable=False)
-    category = db.Column(db.String(50), nullable=False)
+    # category = db.Column(db.String(50), nullable=False)
+
+    category = db.Column(
+        Enum(
+            "Groceries",
+            "Leisure",
+            "Electronics",
+            "Utilities",
+            "Clothing",
+            "Health",
+            "Others",
+            name="expense_category",
+        ),
+        nullable=False,
+    )
+
     expense_date = db.Column(db.Date, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     month = db.Column(db.String(10), nullable=False)
@@ -72,14 +88,14 @@ class Budget(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     month = db.Column(db.String(10), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
+    budget_amount = db.Column(db.Float, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     category = db.Column(db.String(50), nullable=True)
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
 
-    def __init__(self, amount, category, user_id, month, start_date, end_date):
-        self.amount = amount
+    def __init__(self, budget_amount, category, user_id, month, start_date, end_date):
+        self.budget_amount = budget_amount
         self.category = category
         self.user_id = user_id
         self.month = month

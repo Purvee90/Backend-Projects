@@ -139,10 +139,23 @@ with st.form("set_budget_form"):
     start_date = st.date_input("Start Date", value=date.today())
     end_date = st.date_input("End Date", value=date.today())
     budget_submit = st.form_submit_button("Set Budget")
+    category = st.selectbox(
+        "Category",
+        [
+            "Groceries",
+            "Leisure",
+            "Electronics",
+            "Utilities",
+            "Clothing",
+            "Health",
+            "Others",
+        ],
+    )
     if budget_submit:
         payload = {
             "month": month,
             "amount": amount,
+            "category": category,
             "start_date": start_date.strftime("%Y-%m-%d"),
             "end_date": end_date.strftime("%Y-%m-%d"),
         }
@@ -154,3 +167,64 @@ with st.form("set_budget_form"):
                 st.error(res.json().get("error", "Failed to set budget."))
         except Exception as e:
             st.error(f"Error: {e}")
+
+# Charts Section
+st.header("📊 Expense Charts")
+selected_month = st.text_input("Enter Month for Charts (e.g., Jul25)")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("Show Budget vs Expense Chart"):
+        try:
+            res = requests.get(
+                f"{API_BASE}/budget-vs-expense-chart",
+                params={"month": selected_month},
+                headers=headers,
+            )
+            if res.ok:
+                st.image(res.content, caption=f"Budget vs Expense for {selected_month}")
+            else:
+                st.error(res.json().get("error", "Failed to fetch chart."))
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+with col2:
+    if st.button("Show Category-wise Expense Chart"):
+        try:
+            res = requests.get(
+                f"{API_BASE}/category-expense-chart",
+                params={"month": selected_month},
+                headers=headers,
+            )
+            if res.ok:
+                st.image(
+                    res.content, caption=f"Category-wise Expenses for {selected_month}"
+                )
+            else:
+                st.error(res.json().get("error", "Failed to fetch chart."))
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+# Export Expenses to CSV
+st.header("📁 Export Expenses")
+export_month = st.text_input("Enter Month to Export (e.g., Jul25)", key="export_month")
+
+if st.button("Download CSV"):
+    try:
+        res = requests.get(
+            f"{API_BASE}/export-expenses",
+            params={"month": export_month},
+            headers=headers,
+        )
+        if res.ok:
+            st.download_button(
+                label=f"Download expenses_{export_month}.csv",
+                data=res.content,
+                file_name=f"expenses_{export_month}.csv",
+                mime="text/csv",
+            )
+        else:
+            st.error(res.json().get("error", "Failed to export CSV."))
+    except Exception as e:
+        st.error(f"Error: {e}")

@@ -1,6 +1,7 @@
 import jwt
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
+import matplotlib.pyplot as plt
 from datetime import datetime, date, timedelta
 from functools import wraps
 from models import db, Expense, User, Budget
@@ -8,6 +9,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 from sqlalchemy import or_
 from sqlalchemy.orm import aliased
+import csv
+import io
+from io import BytesIO
+from flask import Response
+
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///expenses_tracker.db"
@@ -194,6 +200,7 @@ def list_expenses(current_user):
 
     # ExpenseModel = aliased(Expense)
     # query = ExpenseModel.query.filter_by(user_id=current_user.id)
+    query = Expense.query.filter_by(user_id=current_user.id)
     query = query.filter(Expense.expense_date.between(start, end))  # type: ignore
 
     if start and end:
@@ -217,6 +224,157 @@ def list_expenses(current_user):
         for e in expenses
     ]
     return jsonify({"expenses": result})
+
+
+@app.route("/set-budget", methods=["POST"])
+@token_required
+def set_budget(current_user):
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Missing JSON data"}), 400
+
+    required_fields = ["amount", "start_date", "end_date"]
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"Missing field: {field}"}), 400
+
+    try:
+        start_date = datetime.strptime(data["start_date"], "%Y-%m-%d").date()
+        end_date = datetime.strptime(data["end_date"], "%Y-%m-%d").date()
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
+
+    if start_date > end_date:
+        return jsonify({"error": "Start date cannot be after end date"}), 400
+
+    month = start_date.strftime("%b%y")
+    category = data.get("category")  # Optional
+
+    budget = Budget(
+        budget_amount=float(data["amount"]),
+        category=category,
+        user_id=current_user.id,
+        month=month,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    db.session.add(budget)
+    db.session.commit()
+
+    return jsonify({"message": "Budget set successfully"}), 201
+
+
+@app.route("/export-expenses", methods=["GET"])
+@token_required
+def export_expenses(current_user):
+    month = request.args.get("month")
+    if not month:
+        return jsonify({"error": "Missing 'month' query parameter"}), 400
+
+    expenses = Expense.query.filter_by(user_id=current_user.id, month=month).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Amount", "Description", "Category", "Date", "Month"])
+
+    for e in expenses:
+        writer.writerow(
+            [
+                e.id,
+                e.amount,
+                e.description,
+                e.category,
+                e.expense_date.strftime("%Y-%m-%d"),
+                e.month,
+            ]
+        )
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment;filename=expenses_{month}.csv"},
+    )
+
+
+@app.route("/budget-vs-expense-chart", methods=["GET"])
+@token_required
+def budget_vs_expense_chart(current_user):
+    month = request.args.get("month")
+    if not month:
+        return jsonify({"error": "Missing 'month' query parameter"}), 400
+
+    total_budget = (
+        db.session.query(db.func.sum(getattr(Budget, "budget_amount")))
+        .filter_by(user_id=current_user.id, month=month)
+        .scalar()
+        or 0
+    )
+
+    total_expense = (
+        db.session.query(db.func.sum(getattr(Expense, "amount")))
+        .filter_by(user_id=current_user.id, month=month)
+        .scalar()
+        or 0
+    )
+
+    fig, ax = plt.subplots()
+    ax.bar(["Budget", "Expense"], [total_budget, total_expense], color=["green", "red"])
+    ax.set_title(f"Budget vs Expense for {month}")
+    ax.set_ylabel("Amount")
+
+    img = BytesIO()
+    plt.savefig(img, format="png")
+    img.seek(0)
+    plt.close(fig)
+
+    return send_file(
+        img,
+        mimetype="image/png",
+        as_attachment=True,
+        download_name=f"budget_vs_expense_{month}.png",
+    )
+
+
+@app.route("/category-expense-chart", methods=["GET"])
+@token_required
+def category_expense_chart(current_user):
+    month = request.args.get("month")
+    if not month:
+        return jsonify({"error": "Missing 'month' query parameter"}), 400
+
+    category_totals = (
+        db.session.query(
+            getattr(Expense, "category"), db.func.sum(getattr(Expense, "amount"))
+        )
+        .filter_by(user_id=current_user.id, month=month)
+        .group_by(getattr(Expense, "category"))
+        .all()
+    )
+
+    categories = [c[0] for c in category_totals]
+    amounts = [c[1] for c in category_totals]
+
+    fig, ax = plt.subplots()
+    ax.bar(categories, amounts, color="skyblue")
+    ax.set_title(f"Category-wise Expenses for {month}")
+    ax.set_ylabel("Amount")
+    ax.set_xlabel("Category")
+    plt.xticks(rotation=45)
+
+    img = BytesIO()
+    plt.tight_layout()
+    plt.savefig(img, format="png")
+    img.seek(0)
+    plt.close(fig)
+
+    return send_file(
+        img,
+        mimetype="image/png",
+        as_attachment=True,
+        download_name=f"category_expense_{month}.png",
+    )
 
 
 if __name__ == "__main__":
