@@ -32,7 +32,7 @@ The **Expense Tracker API** allows users to:
 - Monthly and category-wise expense summaries
 - Top spending categories
 
-### 🔐 Optional Enhancements
+### 🔐 Planned Enhancements
 - Role-based access (admin/user)
 - Expense trends over time
 - Date-based filtering (daily, weekly, monthly)
