@@ -25,7 +25,6 @@ The goal is to build a practical tool while learning how to structure backend lo
 - `list`: Display all recorded expenses
 - `summary`: Show total expenses
 - `summary --month`: Show expenses for a specific month
-- Optional: Export to CSV, set monthly budgets, and filter by category
 
 ### 🔗 Enhancements
 
