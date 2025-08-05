@@ -9,7 +9,7 @@ from collections import Counter
 from werkzeug.security import check_password_hash
 from utils import create_snippet, remove_markdown_formatting
 from services.markdown_render import calculate_note_stats
-
+from routes.notes import notes
 # Initialize Flask app
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///notes.db"
@@ -22,6 +22,8 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+
+app.register_blueprint(notes_bp)
 
 # Health check
 @app.route("/")
@@ -226,3 +228,4 @@ def login():
 # Run the app
 if __name__ == "__main__":
     app.run(debug=True)
+
