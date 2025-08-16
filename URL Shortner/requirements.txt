@@ -1,0 +1,12 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+SQLAlchemy==2.0.35
+aiosqlite==0.21.0
+pydantic==2.11.5
+aiocache==0.12.3
+streamlit==1.45.0
+requests==2.32.3
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+qrcode[pil]
