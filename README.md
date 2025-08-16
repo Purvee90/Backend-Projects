@@ -7,3 +7,4 @@ Proficient in Python and prompt engineering, currently exploring Flask, APIs, an
 1. Expense Tracker (CLI) - https://roadmap.sh/projects/expense-tracker
 2. Expense Tracker (API) - https://roadmap.sh/projects/expense-tracker-api
 3. Task Tracker (CLI) - https://roadmap.sh/projects/task-tracker
+4. URL Shortening Service
