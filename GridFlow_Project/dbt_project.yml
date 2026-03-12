@@ -1,0 +1,93 @@
+name: 'energy_dbt'
+version: '1.8.0'
+config-version: 2
+
+# Profile must match a profile in ~/.dbt/profiles.yml
+profile: 'energy_dbt'
+
+# Paths
+model-paths:         ["models"]
+analysis-paths:      ["analyses"]
+test-paths:          ["tests"]
+seed-paths:          ["seeds"]
+macro-paths:         ["macros"]
+snapshot-paths:      ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Global model defaults
+# ─────────────────────────────────────────────────────────────────────────────
+models:
+  energy_dbt:
+
+    # ── Staging layer ────────────────────────────────────────────────────────
+    staging:
+      +schema:       staging
+      +materialized: view          # lightweight; rebuilt each run
+      +tags:         ['staging']
+      +docs:
+        node_color:  '#A2C4C9'
+
+    # ── Intermediate layer ───────────────────────────────────────────────────
+    intermediate:
+      +schema:       intermediate
+      +materialized: ephemeral     # compiled inline; no physical table
+      +tags:         ['intermediate']
+
+    # ── Marts layer ──────────────────────────────────────────────────────────
+    marts:
+      +schema:       marts
+      +materialized: table         # persistent analytics tables
+      +tags:         ['marts']
+      +docs:
+        node_color:  '#F4B942'
+
+      # Incremental overrides per mart sub-folder
+      load:
+        +materialized: incremental
+        +incremental_strategy: merge
+        +unique_key: ['utc_timestamp', 'country_code']
+
+      generation:
+        +materialized: incremental
+        +incremental_strategy: merge
+        +unique_key: ['utc_timestamp', 'plant_id']
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Seeds
+# ─────────────────────────────────────────────────────────────────────────────
+seeds:
+  energy_dbt:
+    +schema: seeds
+    country_codes:
+      +column_types:
+        country_code: string
+        country_name: string
+        region:       string
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Snapshots
+# ─────────────────────────────────────────────────────────────────────────────
+snapshots:
+  energy_dbt:
+    +target_schema: snapshots
+    +strategy:      timestamp
+    +updated_at:    _ingested_at
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tests
+# ─────────────────────────────────────────────────────────────────────────────
+tests:
+  +severity:   warn     # default; override to 'error' in schema.yml per test
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Variables (override on CLI: dbt run --vars '{"start_date": "2023-01-01"}')
+# ─────────────────────────────────────────────────────────────────────────────
+vars:
+  start_date:        '2020-01-01'
+  end_date:          '{{ run_started_at.strftime("%Y-%m-%d") }}'
+  default_country:   'DE'
+  capacity_min_mw:   0.001

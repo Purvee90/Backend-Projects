@@ -1,0 +1,45 @@
+# ~/.dbt/profiles.yml
+# Copy this file to your home directory: cp profiles.yml ~/.dbt/profiles.yml
+# Then set the environment variables or fill in the values directly.
+
+energy_dbt:
+  target: dev
+
+  outputs:
+    # ── Development ────────────────────────────────────────────────────────
+    dev:
+      type:      bigquery
+      method:    oauth                    # uses `gcloud auth application-default login`
+      project:   "{{ env_var('GCP_PROJECT') }}"
+      dataset:   energy_dbt_dev          # separate dev dataset keeps prod clean
+      location:  US
+      threads:   4
+      timeout_seconds: 300
+      priority: interactive
+      retries:  1
+
+    # ── CI / Service-account ───────────────────────────────────────────────
+    ci:
+      type:    bigquery
+      method:  service-account
+      project: "{{ env_var('GCP_PROJECT') }}"
+      dataset: energy_dbt_ci
+      location: US
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      threads: 8
+      timeout_seconds: 600
+      priority: batch
+      retries: 2
+
+    # ── Production ─────────────────────────────────────────────────────────
+    prod:
+      type:    bigquery
+      method:  service-account
+      project: "{{ env_var('GCP_PROJECT') }}"
+      dataset: energy_dbt              # matches schema in dbt_project.yml
+      location: US
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      threads: 16
+      timeout_seconds: 900
+      priority: batch
+      retries: 3

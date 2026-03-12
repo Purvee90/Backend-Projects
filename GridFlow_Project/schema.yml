@@ -1,0 +1,174 @@
+version: 2
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sources  (raw staging tables populated by ingest_data.py)
+# ─────────────────────────────────────────────────────────────────────────────
+sources:
+  - name: energy_staging
+    description: "Raw energy data ingested by the Data Ingestion Agent"
+    database: "{{ env_var('GCP_PROJECT') }}"
+    schema: energy_staging
+    loader: ingest_data.py
+
+    freshness:
+      warn_after:  {count: 25, period: hour}
+      error_after: {count: 49, period: hour}
+    loaded_at_field: _ingested_at
+
+    tables:
+      - name: raw_opsd_load
+        description: "OPSD 60-minute electricity load time series (raw)"
+        columns:
+          - name: utc_timestamp
+            description: "UTC timestamp of the observation"
+            tests:
+              - not_null
+              - unique
+          - name: _ingested_at
+            description: "Row ingestion timestamp"
+            tests: [not_null]
+
+      - name: raw_opsd_renewable_plants
+        description: "OPSD EU renewable power plant registry (raw)"
+        columns:
+          - name: id
+            tests: [unique]
+          - name: capacity
+            description: "Installed capacity in MW"
+
+      - name: raw_opsd_weather
+        description: "OPSD hourly weather data (raw)"
+        columns:
+          - name: utc_timestamp
+            tests: [not_null]
+
+      - name: raw_nrel_solar_resource
+        description: "NREL solar resource API export (raw)"
+        columns:
+          - name: period_start
+            tests: [not_null]
+
+      - name: raw_nrel_wind_resource
+        description: "NREL EPW wind/weather data (raw)"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Staging Models
+# ─────────────────────────────────────────────────────────────────────────────
+models:
+  - name: stg_opsd__load
+    description: >
+      Cleaned and typed OPSD 60-minute electricity load time series.
+      One row per UTC timestamp observation.
+    columns:
+      - name: utc_timestamp
+        description: "UTC timestamp (primary key)"
+        tests:
+          - not_null
+          - unique
+
+      - name: date_day
+        description: "Calendar date extracted from utc_timestamp"
+        tests: [not_null]
+
+      - name: de_load_actual_mw
+        description: "Germany actual load in MW from ENTSO-E transparency"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 200000    # physical upper bound for Germany
+
+      - name: de_load_forecast_mw
+        description: "Germany day-ahead forecast load in MW"
+
+      - name: de_forecast_error_pct
+        description: "(actual - forecast) / forecast × 100"
+
+      - name: hour_of_day
+        description: "Hour of day [0-23]"
+        tests:
+          - accepted_values:
+              values: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]
+
+      - name: _ingested_at
+        tests: [not_null]
+
+
+  - name: stg_opsd__renewable_plants
+    description: >
+      Cleaned OPSD renewable power plant registry.
+      One row per plant.
+    columns:
+      - name: plant_id
+        description: "Unique plant identifier"
+        tests:
+          - not_null
+          - unique
+
+      - name: country_code
+        description: "ISO 2-letter country code"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['DE','AT','CH','FR','GB','DK','NL','BE','PL','CZ',
+                       'SK','HU','RO','BG','HR','SI','IT','ES','PT','GR',
+                       'FI','SE','NO','LT','LV','EE']
+
+      - name: energy_source_l2
+        tests:
+          - accepted_values:
+              values:
+                - Solar
+                - Onshore wind
+                - Offshore wind
+                - Run-of-river
+                - Reservoir
+                - Biomass
+                - Biogas
+                - Geothermal
+                - Marine
+                - Other
+              severity: warn
+
+      - name: capacity_mw
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0.001
+
+      - name: capacity_class
+        tests:
+          - not_null
+          - accepted_values:
+              values: [micro, small, medium, large, utility]
+
+      - name: is_active
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+
+
+  - name: stg_nrel__solar_resource
+    description: >
+      Cleaned NREL solar resource data.
+      One row per (timestamp, location) observation.
+    columns:
+      - name: period_start
+        tests: [not_null]
+
+      - name: ghi_wm2
+        description: "Global Horizontal Irradiance W/m²"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1400
+
+      - name: clearness_index
+        description: "Ratio of GHI to top-of-atmosphere irradiance [0-1]"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 1.1      # slight tolerance for sensor noise
+              severity: warn
